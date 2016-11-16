@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script src="travelling_european.js"></script>
+<script src="SimulatedAnnealing.js"></script>
+<script src="Setup.js"></script>
+<script src='TSP.js'></script>
+<body>
+  <h2>Simulated Annealing</h2>
+  <div id="horizontalBarChart" style="float:left">
+  </div>
+</body>
+<script>
+
+var setup = new Setup(dist);
+var mDimDist = setup.jsonToMDim();
+var indiced = setup.getIndices();
+
+var tsp = new TSP(mDimDist);
+var initialSolution = tsp.initNearestNeighbourSolution(0);
+
+var eulerianCircuit = tsp.generateEulerianCircuit(tsp.generateMinimumSpanningTree());
+
+console.log('Initial greedy solution with nearest neighbour');
+console.log(initialSolution.map(function(sol){return indiced[sol].element}));
+console.log(tsp.computeCost(initialSolution));
+
+var simulatedAnnealing = new SimulatedAnnealing(tsp);
+var finalSolution = simulatedAnnealing.anneal(initialSolution);
+
+console.log('Annealed solution');
+console.log(finalSolution.solution.map(function(solution){return indiced[solution].element}));
+console.log(finalSolution.cost);
+
+
+</script>
