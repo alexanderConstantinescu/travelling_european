@@ -7,32 +7,51 @@ TSP.prototype = {
   // ---Construction Heuristics---
 
   // Random solution
-  initRandomSolution : function(startNode) {
+  computeRandomSolution : function(startNode) {
     var randomSolution = function(distances) {return distances[Math.floor(Math.random()*distances.length)].distance;};
     return this.greedySolve(startNode, randomSolution);
   },
 
   // Greedy constructive solution
-  initNearestNeighbourSolution : function(startNode){
+  computeNearestNeighbourSolution : function(startNode){
     var nearestNeighborSolution = function(tempDistances) {return Math.min.apply(Math, tempDistances.map(function(dist){ return dist.distance;}));};
     return this.greedySolve(startNode, nearestNeighborSolution);
   },
 
-  initTwiceAroundTheTreeSolution : function(eulerianCircuit){
+  computeTwiceAroundTheTreeSolution : function(){
+    var eulerianCircuit = tsp.generateEulerianCircuit();
+    var treeSolution = [], solutionCost = Infinity, possibleTreeSolution = [];
+
+    var pivotIndex = Math.floor(eulerianCircuit.length / 2);
+    for (var i = 0; i < pivotIndex; i++) {
+      for (var j = 0; j < eulerianCircuit.length; j++) {
+        if ((i === 0 || i !== j) && possibleTreeSolution.indexOf(eulerianCircuit[j]) === -1){
+          possibleTreeSolution.push(eulerianCircuit[j]);
+        }
+      }
+      var posssibleSolutionCost = this.computeCost(possibleTreeSolution);
+      if (posssibleSolutionCost < solutionCost) {
+        solutionCost = posssibleSolutionCost;
+        treeSolution = possibleTreeSolution;
+        possibleTreeSolution = [];
+      }
+    }
+    return treeSolution;
+  },
+
+  computeChristofidesSolution : function(){
 
   },
 
-  initChristofidesSolution : function(){
+  computeBranchAndBoundSolution : function(){
 
   },
 
-  initBranchAndBoundSolution : function(){
-
-  },
-
-  generateEulerianCircuit : function (minimumSpanningTree) {
-    var reversedSpanningTree = this.reverseArray(minimumSpanningTree);
-    reversedSpanningTree.splice(0,1);
+  generateEulerianCircuit : function () {
+    var minimumSpanningTree = this.generateMinimumSpanningTree();
+    var minimumSpanningPath = minimumSpanningTree.postOrderWalk(); // Or pre-order walk, heck maybe even a DFS
+    var reversedSpanningTreePath = this.reverseArray(minimumSpanningPath);
+    reversedSpanningTreePath.splice(0,1);
     return Array.prototype.concat.apply([], [minimumSpanningTree, reversedSpanningTree]);
   },
 
@@ -44,13 +63,15 @@ TSP.prototype = {
     return ret;
   },
 
+  // Implementation of the Prim's algorithm
   generateMinimumSpanningTree : function(){
-    // Implementation of the Prim's algorithm
-    var minimumSpanningTree = [], possibleEdges = [];
-    var minVal = Infinity, I = Infinity, J = Infinity;
+
+    var minimumSpanningTree = new Tree();
+    var possibleVertices = [];
+    var minVal = Infinity, I, J, E, P;
 
     for (var i = 0; i < this.costMatrix.length; i++) {
-      possibleEdges.push(i);
+      possibleVertices.push(i);
       for (var j = 0; j < this.costMatrix[i].length; j++) {
         if (this.costMatrix[i][j] < minVal) {
           minVal = this.costMatrix[i][j];
@@ -60,33 +81,55 @@ TSP.prototype = {
       }
     }
 
-    minimumSpanningTree = [I, J];
-    possibleEdges.splice(possibleEdges.indexOf(I),1);
-    possibleEdges.splice(possibleEdges.indexOf(J),1);
-    minVal = Infinity;
-    var tree_length = possibleEdges.length;
+    var Ivertice = minimumSpanningTree.addVertice(new Vertice(I));
+    var Jvertice = minimumSpanningTree.addVertice(new Vertice(J));
+    Ivertice.addEdge(Jvertice, minVal);
 
-    for (var unused = 0; unused < tree_length; unused++) {
-      for (var e = 0; e < minimumSpanningTree.length; e++) {
-        for (var p = 0; p < possibleEdges.length; p++) {
-          if (this.costMatrix[minimumSpanningTree[e]][possibleEdges[p]] < minVal) {
-            minVal = this.costMatrix[minimumSpanningTree[e]][possibleEdges[p]];
-            E = minimumSpanningTree[e];
-            P = possibleEdges[p];
+    possibleVertices.splice(possibleVertices.indexOf(I),1);
+    possibleVertices.splice(possibleVertices.indexOf(J),1);
+    minVal = Infinity;
+
+    var treeLength = possibleVertices.length;
+    for (var unused = 0; unused < treeLength; unused++) {
+      for (var v = 0; v < minimumSpanningTree.vertices.length; v++) {
+        for (var p = 0; p < possibleVertices.length; p++) {
+          if (this.costMatrix[minimumSpanningTree.vertices[v].id][possibleVertices[p]] < minVal) {
+            minVal = this.costMatrix[minimumSpanningTree.vertices[v].id][possibleVertices[p]];
+            E = minimumSpanningTree.vertices[v].id;
+            P = possibleVertices[p];
           }
         }
       }
+      var Evertice = minimumSpanningTree.addVertice(new Vertice(E));
+      var Pvertice = minimumSpanningTree.addVertice(new Vertice(P));
+      Evertice.addEdge(Pvertice, minVal);
       minVal = Infinity;
-      minimumSpanningTree.push(P);
-      possibleEdges.splice(possibleEdges.indexOf(P),1);
+      possibleVertices.splice(possibleVertices.indexOf(P),1);
     }
 
     return minimumSpanningTree;
   },
 
+
   greedySolve : function(startNode, cb){
-    var solution = [];
-    solution.push(startNode);
+    var greedySolution = [], cost = Infinity;
+    if (startNode !== undefined) {
+      greedySolution = this.greedyTraverseGraph(startNode, cb);
+    } else {
+      for (var solutionStartNode = 0; solutionStartNode < this.costMatrix.length; solutionStartNode++) {
+        var tmpSolution = this.greedyTraverseGraph(solutionStartNode, cb);
+        var tmpCost = this.computeCost(tmpSolution);
+        if (tmpCost < cost) {
+          greedySolution = tmpSolution;
+          cost = tmpCost;
+        }
+      }
+    }
+    return greedySolution;
+  },
+
+  greedyTraverseGraph : function(startNode, cb){
+    var solution = [startNode];
     for (var row = 0; row < this.costMatrix.length - 1; row++) {
       var tempDistances = [];
       for (var column = 0; column < this.costMatrix[startNode].length; column++) {
@@ -99,6 +142,7 @@ TSP.prototype = {
       solution.push(nodeElement.id);
       startNode = nodeElement.id;
     }
+    solution.push(solution[0]);
     return solution;
   },
 
@@ -172,7 +216,7 @@ TSP.prototype = {
   },
 
   getAmountOfPossibleSolutions : function() {
-    // Implementation of !(n-1)
+    // Implementation of (n-1)!
     var solutionAmount = 1;
     for (var i = 1; i <= this.costMatrix.length - 1; i++) {
       solutionAmount = solutionAmount*i;
@@ -187,9 +231,7 @@ TSP.prototype = {
   computeCost : function(solution) {
     var cost = 0;
     for (var i = 0; i < solution.length; i++) {
-      if (i+1 === solution.length) {
-        cost += this.costMatrix[solution[i]][solution[0]];
-      } else{
+      if (i+1 !== solution.length) {
         cost += this.costMatrix[solution[i]][solution[i+1]];
       }
     }

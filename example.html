@@ -5,6 +5,7 @@
 <script src="travelling_european.js"></script>
 <script src="SimulatedAnnealing.js"></script>
 <script src="Setup.js"></script>
+<script src="Graph.js"></script>
 <script src='TSP.js'></script>
 <body>
   <h2>Simulated Annealing</h2>
@@ -18,9 +19,8 @@ var mDimDist = setup.jsonToMDim();
 var indiced = setup.getIndices();
 
 var tsp = new TSP(mDimDist);
-var initialSolution = tsp.initNearestNeighbourSolution(0);
-
-var eulerianCircuit = tsp.generateEulerianCircuit(tsp.generateMinimumSpanningTree());
+var initialSolution = tsp.computeNearestNeighbourSolution();
+var twiceAroundTheTreeSolution = tsp.computeTwiceAroundTheTreeSolution();
 
 console.log('Initial greedy solution with nearest neighbour');
 console.log(initialSolution.map(function(sol){return indiced[sol].element}));
